@@ -1,0 +1,148 @@
+{
+  "entities": {
+    "Category": {
+      "title": "Category",
+      "description": "A user-defined category for tasks",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "The user ID who owns this category"
+        },
+        "name": {
+          "type": "string",
+          "description": "Category name in Arabic"
+        },
+        "color": {
+          "type": "string",
+          "description": "Hex color code"
+        },
+        "icon": {
+          "type": "string",
+          "description": "Lucide icon name"
+        },
+        "isChained": {
+          "type": "boolean",
+          "description": "Whether tasks in this category should be chained sequentially"
+        }
+      },
+      "required": ["uid", "name", "color", "icon", "isChained"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "A task on the calendar",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "The user ID who owns this task"
+        },
+        "title": {
+          "type": "string",
+          "description": "Task title"
+        },
+        "categoryId": {
+          "type": "string",
+          "description": "Reference to the category"
+        },
+        "startDate": {
+          "type": "object",
+          "description": "Firestore Timestamp of start date"
+        },
+        "endDate": {
+          "object": "string",
+          "description": "Firestore Timestamp of end date"
+        },
+        "order": {
+          "type": "number",
+          "description": "Reordering index"
+        },
+        "isChained": {
+          "type": "boolean",
+          "description": "Inherited from category"
+        },
+        "isApproved": {
+          "type": "boolean",
+          "description": "Whether the task has been approved"
+        },
+        "isCompleted": {
+          "type": "boolean",
+          "description": "Whether the task has been completed"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Optional notes"
+        },
+        "previousStartDate": {
+          "type": "object",
+          "description": "Firestore Timestamp of previous start date"
+        },
+        "previousEndDate": {
+          "type": "object",
+          "description": "Firestore Timestamp of previous end date"
+        },
+        "delayReason": {
+          "type": "string",
+          "description": "Reason for delaying the task"
+        },
+        "changeLogs": {
+          "type": "array",
+          "description": "History of changes for approved tasks"
+        },
+        "createdAt": {
+          "type": "object",
+          "description": "Firestore serverTimestamp"
+        },
+        "updatedAt": {
+          "type": "object",
+          "description": "Firestore serverTimestamp"
+        }
+      },
+      "required": ["uid", "title", "categoryId", "startDate", "endDate", "order", "isChained", "isApproved", "createdAt", "updatedAt"]
+    },
+    "Reason": {
+      "title": "Reason",
+      "description": "A frequently used reason for task changes",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "The user ID who owns this reason"
+        },
+        "text": {
+          "type": "string",
+          "description": "The reason text"
+        },
+        "count": {
+          "type": "number",
+          "description": "How many times this reason has been used"
+        },
+        "lastUsed": {
+          "type": "object",
+          "description": "Firestore serverTimestamp of last usage"
+        }
+      },
+      "required": ["uid", "text", "count", "lastUsed"]
+    }
+  },
+  "firestore": {
+    "categories/{categoryId}": {
+      "schema": {
+        "$ref": "#/entities/Category"
+      },
+      "description": "Stores user categories"
+    },
+    "tasks/{taskId}": {
+      "schema": {
+        "$ref": "#/entities/Task"
+      },
+      "description": "Stores user tasks"
+    },
+    "reasons/{reasonId}": {
+      "schema": {
+        "$ref": "#/entities/Reason"
+      },
+      "description": "Stores user's common reasons for task changes"
+    }
+  }
+}

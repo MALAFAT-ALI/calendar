@@ -1,0 +1,154 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: categories
+    // Document ID: auto-generated
+    // Fields:
+    //   - uid: string (required, immutable) - owner ID
+    //   - name: string (required) - category name
+    //   - color: string (required) - hex color
+    //   - icon: string (required) - icon name
+    //   - isChained: boolean (required) - sequential behavior flag
+    //
+    // Collection: tasks
+    // Document ID: auto-generated
+    // Fields:
+    //   - uid: string (required, immutable) - owner ID
+    //   - title: string (required) - task title
+    //   - categoryId: string (required) - reference to category
+    //   - startDate: timestamp (required) - start date
+    //   - endDate: timestamp (required) - end date
+    //   - order: number (required) - reordering index
+    //   - isChained: boolean (required) - inherited flag
+    //   - isApproved: boolean (required) - approval flag
+    //   - isCompleted: boolean (optional) - completion flag
+    //   - notes: string (optional) - task notes
+    //   - previousStartDate: timestamp (optional) - previous start date
+    //   - previousEndDate: timestamp (optional) - previous end date
+    //   - delayReason: string (optional) - reason for delay
+    //   - changeLogs: list (optional) - history of changes
+    //   - createdAt: timestamp (required) - creation time
+    //   - updatedAt: timestamp (required) - update time
+    //
+    // Collection: reasons
+    // Document ID: auto-generated
+    // Fields:
+    //   - uid: string (required, immutable) - owner ID
+    //   - text: string (required) - reason text
+    //   - count: number (required) - usage frequency
+    //   - lastUsed: timestamp (required) - last usage time
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.uid;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (request.auth.token.email == "omalafat@gmail.com" && request.auth.token.email_verified == true);
+    }
+    
+    function uidUnchanged() {
+      return !('uid' in request.resource.data) || request.resource.data.uid == request.auth.uid;
+    }
+    
+    function uidNotModified() {
+      return !('uid' in request.resource.data) || request.resource.data.uid == resource.data.uid;
+    }
+    
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+    
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+    
+    function isValidCategory(data) {
+      let allowedFields = ['uid', 'name', 'color', 'icon', 'isChained'];
+      return hasOnlyAllowedFields(allowedFields) &&
+             hasRequiredFields(['uid', 'name', 'color', 'icon', 'isChained']) &&
+             data.uid is string && data.uid.size() > 0 && data.uid.size() < 128 &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 256 &&
+             data.color is string && data.color.size() > 0 && data.color.size() < 32 &&
+             data.icon is string && data.icon.size() > 0 && data.icon.size() < 128 &&
+             data.isChained is bool;
+    }
+
+    function isValidTask(data) {
+      let allowedFields = ['uid', 'title', 'categoryId', 'startDate', 'endDate', 'order', 'isChained', 'isApproved', 'isCompleted', 'notes', 'previousStartDate', 'previousEndDate', 'delayReason', 'changeLogs', 'createdAt', 'updatedAt'];
+      return hasOnlyAllowedFields(allowedFields) &&
+             hasRequiredFields(['uid', 'title', 'categoryId', 'startDate', 'endDate', 'order', 'isChained', 'isApproved', 'createdAt', 'updatedAt']) &&
+             data.uid is string && data.uid.size() > 0 && data.uid.size() < 128 &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 512 &&
+             data.categoryId is string && data.categoryId.size() > 0 && data.categoryId.size() < 128 &&
+             data.startDate is timestamp &&
+             data.endDate is timestamp &&
+             data.order is number &&
+             data.isChained is bool &&
+             data.isApproved is bool &&
+             (!('isCompleted' in data) || data.isCompleted is bool) &&
+             (!('notes' in data) || (data.notes is string && data.notes.size() < 10000)) &&
+             (!('previousStartDate' in data) || data.previousStartDate is timestamp) &&
+             (!('previousEndDate' in data) || data.previousEndDate is timestamp) &&
+             (!('delayReason' in data) || (data.delayReason is string && data.delayReason.size() < 2000)) &&
+             (!('changeLogs' in data) || (data.changeLogs is list && data.changeLogs.size() < 200)) &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp;
+    }
+
+    function isValidReason(data) {
+      let allowedFields = ['uid', 'text', 'count', 'lastUsed'];
+      return hasOnlyAllowedFields(allowedFields) &&
+             hasRequiredFields(['uid', 'text', 'count', 'lastUsed']) &&
+             data.uid is string && data.uid.size() > 0 && data.uid.size() < 128 &&
+             data.text is string && data.text.size() > 0 && data.text.size() < 2000 &&
+             data.count is number &&
+             data.lastUsed is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /categories/{categoryId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isAuthenticated() && isValidCategory(request.resource.data) && uidUnchanged();
+      allow update: if (isDocOwner() || isAdmin()) && isValidCategory(request.resource.data) && uidNotModified();
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /tasks/{taskId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isAuthenticated() && isValidTask(request.resource.data) && uidUnchanged();
+      allow update: if (isDocOwner() || isAdmin()) && isValidTask(request.resource.data) && uidNotModified();
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /reasons/{reasonId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isAuthenticated() && request.resource.data.uid == request.auth.uid && isValidReason(request.resource.data);
+      allow update: if (isDocOwner() || isAdmin()) && request.resource.data.uid == request.auth.uid && isValidReason(request.resource.data);
+      allow delete: if isDocOwner() || isAdmin();
+    }
+  }
+}
